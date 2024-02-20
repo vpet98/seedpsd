@@ -1,0 +1,85 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>Quality Control</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+        integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+        crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+      integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
+      crossorigin=""></script>
+    <style>
+      #map {
+        margin: 0 auto;
+        height: 700px;
+        width: 900px;
+        border-radius: 7px;
+        box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+
+  <body>
+    <p align="center"><span class="style2"><b><font size="4" face="Arial"><strong>  Live Seismic Information: Quality Control Monitoring (daily updated)</strong></font><br><br>
+      <small><font color='red'>For further information on Ambient Noise and Quality Control Monitoring performed at NOA-IG please refer to <a href="/docs/BSSA_102_6_2012_Evangelidis_and_Melis.pdf" target="blank">[1]</a></font></small></b>
+      <div id="map"></div>
+    </p>
+    <hr />
+    <p class="text"> <b><font size="4">CREDITS</font></b> </p>
+    <ul>
+      <li><a href="https://gricad-gitlab.univ-grenoble-alpes.fr/OSUG/RESIF/seedpsd" target="_blank">SeedPSD</a> is an open-source software authored by <a href="https://seismology.resif.fr/" target="_blank">RESIF</a>. This software process miniseed data stream. Hourly segmented power spectral densities (PSDs) are aggregated to show probabilistic distributions of the seismic noise levels. PSDs are calculated by the method described by McNamara, 2004 using ObsPy for a particular network/station/location/channel combination. Calculations are stored in database. </li>
+    </ul>
+    <hr />
+    <script>
+        var map = L.map('map').setView([38, 26], 6);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+        var url = 'https://eida.gein.noa.gr/fdsnws/station/1/query?format=text'
+        var icons = {
+          'HL': L.icon({iconUrl: './images/HL.png'}),
+          'HA': L.icon({iconUrl: './images/HA.png'}),
+          'HC': L.icon({iconUrl: './images/HC.png'}),
+          'HT': L.icon({iconUrl: './images/HT.png'}),
+          'HP': L.icon({iconUrl: './images/HP.png'}),
+          'HI': L.icon({iconUrl: './images/HI.png'}),
+          'CQ': L.icon({iconUrl: './images/CQ.png'}),
+          '1Y': L.icon({iconUrl: './images/1Y.png'}),
+          'ME': L.icon({iconUrl: './images/ME.png'}),
+          '5S': L.icon({iconUrl: './images/5S.png'}),
+          'EG': L.icon({iconUrl: './images/EG.png'}),
+          'YB': L.icon({iconUrl: './images/YB.png'}),
+          'X5': L.icon({iconUrl: './images/X5.png'}),
+          '5B': L.icon({iconUrl: './images/5B.png'}),
+          'OTHERS': L.icon({iconUrl: './images/others.png'})
+        }
+        fetch(url)
+        .then(response => response.text())
+        .then(data => {
+          for (l of data.split('\n').slice(1)) {
+            if (l) {
+              let fields = l.split('|')
+              let marker = L.marker([fields[2], fields[3]], {icon: icons[fields[0]] || icons['OTHERS']}).addTo(map);
+              marker.bindPopup(`Network: ${fields[0]}<br>Station: ${fields[1]}`);
+              marker.on('click', async function (e) {
+                const urlcha = `https://eida.gein.noa.gr/fdsnws/station/1/query?network=${fields[0]}&level=channel&format=text&station=${fields[1]}`;
+                const response = await fetch(urlcha);
+                const data = await response.text();
+                const lines = data.split('\n').slice(1);
+                let content = '';
+                lines.forEach(line => {
+                    const parts = line.split('|');
+                    if (parts.length >= 4 && parts[16] === '') {
+                        content += `<br><a href="https://bbnet.gein.noa.gr/QC/htdocs/networks/${fields[0]}/${fields[0]}.${fields[1]}.${parts[3]}.html" target="_blank">${parts[3]} SeedPSD Plots</a>`;
+                    }
+                });
+                marker.setPopupContent(`Network: ${fields[0]}<br>Station: ${fields[1]}${content}`);
+              });
+            }
+          }
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+        });
+    </script>
+  </body>
+</html>
